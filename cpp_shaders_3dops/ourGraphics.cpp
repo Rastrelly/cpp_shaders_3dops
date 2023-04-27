@@ -296,93 +296,82 @@ void drawLine(Shader * shad,glm::vec3 p1, glm::vec3 p2, glm::vec3 colour)
 	drawOurVBO(pointArrToFlArr({ p1, p2 }, colour, 1.0f, 1.0f, 1.0f), 6, GL_LINES, 3);
 }
 
-void DCappendPoint(glm::vec3 center, glm::vec3 radius, glm::vec3 d, glm::vec2 txcoords, flarr &verts)
+void DCappendPoint(glm::vec3 center, glm::vec3 radius, glm::vec3 d, glm::vec3 colour, glm::vec2 txcoords, flarr &verts)
 {
 	glm::vec3 cp = center + d * radius;
 	verts.push_back(cp.x);
 	verts.push_back(cp.y);
 	verts.push_back(cp.z);
+	verts.push_back(colour.r);
+	verts.push_back(colour.g);
+	verts.push_back(colour.b);
+	verts.push_back(txcoords.x);
+	verts.push_back(txcoords.y);
 }
 
-void drawCube(Shader * shad, glm::vec3 center, glm::vec3 radius, unsigned int tex)
+void drawCube(Shader * shad, glm::vec3 center, glm::vec3 radius, glm::vec3 colour, unsigned int tex)
 {
 	shad->use();
 	flarr cubeVertices = {};
 	intarr cubeIndices = {};
 
 	//0
-	DCappendPoint(center, radius, glm::vec3(-1, -1, -1), glm::vec2(-1, -1), cubeVertices);
-	DCappendPoint(glm::vec3(1.0f,1.0f,1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec2(0, 0), cubeVertices);
-	cubeVertices.push_back(0.0f); cubeVertices.push_back(0.0f);
+	DCappendPoint(center, radius, glm::vec3(-1, -1, -1), glm::vec3(1, 1, 1), glm::vec2(0, 0), cubeVertices);
 	//1
-	DCappendPoint(center, radius, glm::vec3(-1, -1, 1), glm::vec2(-1, 1), cubeVertices);
-	DCappendPoint(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec2(0, 0), cubeVertices);
-	cubeVertices.push_back(0.0f); cubeVertices.push_back(1.0f);
+	DCappendPoint(center, radius, glm::vec3(-1, 1, -1), glm::vec3(1, 1, 1), glm::vec2(0, 1), cubeVertices);
 	//2
-	DCappendPoint(center, radius, glm::vec3(-1, 1, -1), glm::vec2(1, -1), cubeVertices);
-	DCappendPoint(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec2(0, 0), cubeVertices);
-	cubeVertices.push_back(1.0f); cubeVertices.push_back(0.0f);
+	DCappendPoint(center, radius, glm::vec3(1, 1, -1), glm::vec3(1, 1, 1), glm::vec2(1, 1), cubeVertices);
 	//3
-	DCappendPoint(center, radius, glm::vec3(-1, 1, 1), glm::vec2(1, 1), cubeVertices);
-	DCappendPoint(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec2(0, 0), cubeVertices);
-	cubeVertices.push_back(1.0f); cubeVertices.push_back(1.0f);
+	DCappendPoint(center, radius, glm::vec3(1, -1, -1), glm::vec3(1, 1, 1), glm::vec2(1, 0), cubeVertices);
 	//4
-	DCappendPoint(center, radius, glm::vec3(1, -1, -1), glm::vec2(-1, -1), cubeVertices);
-	DCappendPoint(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec2(0, 0), cubeVertices);
-	cubeVertices.push_back(0.0f); cubeVertices.push_back(0.0f);
+	DCappendPoint(center, radius, glm::vec3(-1, -1, 1), glm::vec3(1, 1, 1), glm::vec2(1, 0), cubeVertices);
 	//5
-	DCappendPoint(center, radius, glm::vec3(1, -1, 1), glm::vec2(-1, 1), cubeVertices);
-	DCappendPoint(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec2(0, 0), cubeVertices);
-	cubeVertices.push_back(0.0f); cubeVertices.push_back(1.0f);
+	DCappendPoint(center, radius, glm::vec3(-1, 1, 1), glm::vec3(1, 1, 1), glm::vec2(1, 1), cubeVertices);
 	//6
-	DCappendPoint(center, radius, glm::vec3(1, 1, -1), glm::vec2(1, -1), cubeVertices);
-	DCappendPoint(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec2(0, 0), cubeVertices);
-	cubeVertices.push_back(1.0f); cubeVertices.push_back(0.0f);
+	DCappendPoint(center, radius, glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), glm::vec2(0, 1), cubeVertices);
 	//7
-	DCappendPoint(center, radius, glm::vec3(1, 1, 1), glm::vec2(1, 1), cubeVertices);
-	DCappendPoint(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec2(0, 0), cubeVertices);
-	cubeVertices.push_back(1.0f); cubeVertices.push_back(1.0f);
+	DCappendPoint(center, radius, glm::vec3(1, -1, 1), glm::vec3(1, 1, 1), glm::vec2(0, 0), cubeVertices);
 
 	//1
 	cubeIndices.push_back(0);
 	cubeIndices.push_back(1);
-	cubeIndices.push_back(4);
-	cubeIndices.push_back(4);
-	cubeIndices.push_back(1);
-	cubeIndices.push_back(5);
-	//2
+	cubeIndices.push_back(3);
 	cubeIndices.push_back(1);
 	cubeIndices.push_back(3);
-	cubeIndices.push_back(5);
-	cubeIndices.push_back(5);
-	cubeIndices.push_back(6);
+	cubeIndices.push_back(2);
+	//2
+	cubeIndices.push_back(3);
+	cubeIndices.push_back(2);
 	cubeIndices.push_back(7);
-	//3
-	cubeIndices.push_back(0);
-	cubeIndices.push_back(4);
 	cubeIndices.push_back(2);
-	cubeIndices.push_back(2);
+	cubeIndices.push_back(7);
 	cubeIndices.push_back(6);
+	//3
 	cubeIndices.push_back(4);
+	cubeIndices.push_back(5);
+	cubeIndices.push_back(7);
+	cubeIndices.push_back(5);
+	cubeIndices.push_back(7);
+	cubeIndices.push_back(6);
 	//4
 	cubeIndices.push_back(0);
 	cubeIndices.push_back(1);
-	cubeIndices.push_back(2);
-	cubeIndices.push_back(2);
-	cubeIndices.push_back(3);
+	cubeIndices.push_back(4);
 	cubeIndices.push_back(1);
-	//5
 	cubeIndices.push_back(4);
 	cubeIndices.push_back(5);
-	cubeIndices.push_back(6);
-	cubeIndices.push_back(6);
-	cubeIndices.push_back(7);
+	//5
+	cubeIndices.push_back(1);
 	cubeIndices.push_back(5);
-	//6
 	cubeIndices.push_back(2);
+	cubeIndices.push_back(5);
+	cubeIndices.push_back(2);
+	cubeIndices.push_back(6);
+	//6
+	cubeIndices.push_back(0);
+	cubeIndices.push_back(4);
 	cubeIndices.push_back(3);
-	cubeIndices.push_back(6);
-	cubeIndices.push_back(6);
+	cubeIndices.push_back(4);
 	cubeIndices.push_back(3);
 	cubeIndices.push_back(7);
 

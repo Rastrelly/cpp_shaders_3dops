@@ -2,6 +2,8 @@
 
 #include "ourGraphics.h"
 
+//Freetype library needed to include this header
+
 #include <ft2build.h>
 #include FT_FREETYPE_H  
 

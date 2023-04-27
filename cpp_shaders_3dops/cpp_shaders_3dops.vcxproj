@@ -72,8 +72,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\CPPLIBS\glm;C:\CPPLIBS\stb_image;C:\CPPLIBS\glad\include;C:\CPPLIBS\freetype-windows-binaries-2.13.0\include;C:\CPPLIBS\glfw32\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\CPPLIBS\freetype-windows-binaries-2.13.0\release static\vs2015-2022\win32;C:\CPPLIBS\glfw32\lib-vc2017;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\CPPLIBS\assimp-5.2.5\built\include;C:\CPPLIBS\glm;C:\CPPLIBS\stb_image;C:\CPPLIBS\glad\include;C:\CPPLIBS\freetype-windows-binaries-2.13.0\include;C:\CPPLIBS\assimp-5.2.5\include;C:\CPPLIBS\glfw32\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\CPPLIBS\assimp-5.2.5\built\lib\Debug;C:\CPPLIBS\freetype-windows-binaries-2.13.0\release static\vs2015-2022\win32;C:\CPPLIBS\glfw32\lib-vc2017;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -97,7 +97,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;freetype.lib;assimp-vc141-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -158,11 +158,13 @@
     <ClCompile Include="glad.c" />
     <ClCompile Include="ourGraphics.cpp" />
     <ClCompile Include="ourGraphicsFreeType.cpp" />
+    <ClCompile Include="ourGraphicsMeshes.cpp" />
     <ClCompile Include="shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ourGraphics.h" />
     <ClInclude Include="ourGraphicsFreeType.h" />
+    <ClInclude Include="ourGraphicsMeshes.h" />
     <ClInclude Include="shader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

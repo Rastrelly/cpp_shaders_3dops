@@ -2,11 +2,13 @@
 
 #include <iostream>
 #include <ctime>
-#include <glad/glad.h> 
-#include <GLFW/glfw3.h>
 #include <vector>
 #include <string>
 #include <cctype>
+
+#include <glad/glad.h> 
+#include <GLFW/glfw3.h>
+
 #include "shader.h"
 
 using std::vector;
@@ -64,5 +66,5 @@ void drawChartLine(Shader * shad, vec3arr chartPoints, glm::vec3 colour, float h
 flarr pointArrToFlArr(vec3arr cdata, glm::vec3 colour, float xscale, float yscale, float zscale);
 float scaleVal(float val, float scale);
 void drawLine(Shader * shad, glm::vec3 p1, glm::vec3 p2, glm::vec3 colour);
-void drawCube(Shader * shad, glm::vec3 center, glm::vec3 radius, unsigned int tex);
+void drawCube(Shader * shad, glm::vec3 center, glm::vec3 radius, glm::vec3 colour, unsigned int tex);
 void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, unsigned int tex);
