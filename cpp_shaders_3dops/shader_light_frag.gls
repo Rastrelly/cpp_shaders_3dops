@@ -7,61 +7,54 @@ in vec3 FragPos;
 in vec3 Normal; 
 in vec2 texCoord;
 
+struct lightSetup
+{
+  bool use;
+  vec3 pos;
+  vec3 ambientColor;
+  float ambientBrightness;
+  vec3 diffuseColor;
+  float diffuseBrightness;  
+  float specularBrightness;
+};
+
+uniform lightSetup light;
 
 uniform sampler2D ourTexture;
 uniform bool useColour;
-uniform bool useLight;
 uniform bool useTexture;
 
-uniform vec3 ambientColor;
-uniform float ambientBrightness;
-
-uniform vec3 lightPos;
-uniform vec3 lightColor;
-uniform float lightBrightness;  
-
 uniform vec3 camPos;
-uniform float specularBrightness;
 
 vec4 tColor;
 vec4 fColor;
 
-vec3 norm; 
-vec3 lightDir;
-
-float diff;
-vec3 diffuse;
 vec4 df;
-
-vec4 amc;
 vec4 amb;
-
-vec3 camDir;
-vec3 refDir;
 
 vec4 oSpc;
 
 void main()
 {
 
-	if (useLight == true)
+	if (light.use == true)
 	{
-	  norm = normalize(Normal);
-	  lightDir = normalize(lightPos - FragPos);  
+	  vec3 norm = normalize(Normal);
+	  vec3 lightDir = normalize(light.pos - FragPos);  
 	
-	  diff = max(dot(norm, lightDir), 0.0);
-      diffuse = diff * lightColor * lightBrightness;
+	  float diffVal = max(dot(norm, lightDir), 0.0);
+      vec3 diffuse = diffVal * light.diffuseColor * light.diffuseBrightness;
 	  df = vec4(diffuse,1.0);
 
-	  amc = vec4(ambientColor,1.0);
-	  amb = amc * ambientBrightness;
+	  vec4 amc = vec4(light.ambientColor,1.0);
+	  amb = amc * light.ambientBrightness;
 	  
-	  camDir = normalize(camPos - FragPos);
+	  vec3 camDir = normalize(camPos - FragPos);
 	  
-	  refDir = reflect(-lightDir, norm);
+	  vec3 refDir = reflect(-lightDir, norm);
 	  
 	  float specVal = pow(max(dot(camDir, refDir), 0.0), 32);
-	  vec3 specular = specularBrightness * specVal * lightColor;
+	  vec3 specular = light.specularBrightness * specVal * light.diffuseColor;
 	  oSpc = vec4(specular,1.0);
 	}
 	
@@ -76,8 +69,8 @@ void main()
 	
 	if(oColor.a < 0.8) discard;
 	
-	if (useLight == true)
+	if (light.use == true)
 	  FragColor = (amb + df + oSpc) * oColor;
-	if (useLight == false)
+	if (light.use == false)
 	  FragColor = oColor;
 }

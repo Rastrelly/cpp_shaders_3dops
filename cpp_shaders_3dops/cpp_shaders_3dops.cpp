@@ -84,8 +84,8 @@ int main()
 		//set lighting uniforms for shader
 		oMan.useShader(0);
 		oMan.getShader(0)->setBool("useColour", true);
-		oMan.getShader(0)->setBool("useLight", true);
 		oMan.getShader(0)->setBool("useTexture", true);
+		oMan.getShader(0)->setBool("light.use", true);
 				
 		updateColorMotion(lcr, spr, deltaTime);
 		updateColorMotion(lcg, spg, deltaTime);
@@ -101,15 +101,15 @@ int main()
 
 		light_pos.x = lcx; light_pos.y = lcy; light_pos.z = lcz;
 
-		oMan.getShader(0)->setVector3f("ambientColor", ambient_colour.r, ambient_colour.g, ambient_colour.b);
-		oMan.getShader(0)->setFloat("ambientBrightness", ambient_brightness);
+		oMan.getShader(0)->setVector3f("light.ambientColor", ambient_colour.r, ambient_colour.g, ambient_colour.b);
+		oMan.getShader(0)->setFloat("light.ambientBrightness", ambient_brightness);
 
-		oMan.getShader(0)->setVector3f("lightPos", light_pos.x, light_pos.y, light_pos.z);
-		oMan.getShader(0)->setVector3f("lightColor", light_colour.r, light_colour.g, light_colour.b);
-		oMan.getShader(0)->setFloat("lightBrightness", light_brightness);
+		oMan.getShader(0)->setVector3f("light.pos", light_pos.x, light_pos.y, light_pos.z);
+		oMan.getShader(0)->setVector3f("light.diffuseColor", light_colour.r, light_colour.g, light_colour.b);
+		oMan.getShader(0)->setFloat("light.diffuseBrightness", light_brightness);
 
 		oMan.getShader(0)->setVector3f("camPos", camera_pos.x, camera_pos.y, camera_pos.z);
-		oMan.getShader(0)->setFloat("specularBrightness", specular_brightness);
+		oMan.getShader(0)->setFloat("light.specularBrightness", specular_brightness);
 
 		oMan.setDefaultProjections();
 
@@ -148,7 +148,7 @@ int main()
 		oMan.updateProjectionForShader(0);
 		oMan.getShader(0)->setBool("useColour", false);
 		oMan.getShader(0)->setBool("useTexture", true);
-		oMan.getShader(0)->setBool("useLight", true);
+		oMan.getShader(0)->setBool("light.use", true);
 		drawCube(oMan.getShader(0), glm::vec3(0.0f), glm::vec3(25.0f), glm::vec3(1.0f), tex2, true);
 
 		//drawmodel
@@ -161,7 +161,7 @@ int main()
 		oMan.updateProjectionForShader(0);
 		oMan.getShader(0)->setBool("useColour", false);
 		oMan.getShader(0)->setBool("useTexture", true);
-		oMan.getShader(0)->setBool("useLight", true);
+		oMan.getShader(0)->setBool("light.use", true);
 
 		glBindTexture(GL_TEXTURE_2D, tex4);
 
