@@ -1,0 +1,83 @@
+#version 440 core
+
+out vec4 FragColor;
+
+in vec4 vertClr;
+in vec3 FragPos; 
+in vec3 Normal; 
+in vec2 texCoord;
+
+
+uniform sampler2D ourTexture;
+uniform bool useColour;
+uniform bool useLight;
+uniform bool useTexture;
+
+uniform vec3 ambientColor;
+uniform float ambientBrightness;
+
+uniform vec3 lightPos;
+uniform vec3 lightColor;
+uniform float lightBrightness;  
+
+uniform vec3 camPos;
+uniform float specularBrightness;
+
+vec4 tColor;
+vec4 fColor;
+
+vec3 norm; 
+vec3 lightDir;
+
+float diff;
+vec3 diffuse;
+vec4 df;
+
+vec4 amc;
+vec4 amb;
+
+vec3 camDir;
+vec3 refDir;
+
+vec4 oSpc;
+
+void main()
+{
+
+	if (useLight == true)
+	{
+	  norm = normalize(Normal);
+	  lightDir = normalize(lightPos - FragPos);  
+	
+	  diff = max(dot(norm, lightDir), 0.0);
+      diffuse = diff * lightColor * lightBrightness;
+	  df = vec4(diffuse,1.0);
+
+	  amc = vec4(ambientColor,1.0);
+	  amb = amc * ambientBrightness;
+	  
+	  camDir = normalize(camPos - FragPos);
+	  
+	  refDir = reflect(-lightDir, norm);
+	  
+	  float specVal = pow(max(dot(camDir, refDir), 0.0), 32);
+	  vec3 specular = specularBrightness * specVal * lightColor;
+	  oSpc = vec4(specular,1.0);
+	}
+	
+	tColor = vec4(1.0);
+	if (useTexture == true)
+	  tColor = texture(ourTexture, texCoord);
+	
+	fColor = vec4(1.0);
+	if (useColour == true) fColor = vertClr; 
+	
+	vec4 oColor = tColor * fColor;
+	
+	if(oColor.a < 0.8) discard;
+	
+	if (useLight == true)
+	  FragColor = (amb + df + oSpc) * oColor;
+	if (useLight == false)
+	  FragColor = oColor;
+}

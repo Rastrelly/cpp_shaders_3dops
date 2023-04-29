@@ -8,6 +8,30 @@ OGLManager::OGLManager(int pwx, int pwy, GLFWframebuffersizefun callback)
 	setDefaultProjections();
 }
 
+void OGLManager::addShader(const char* vertexPath, const char* fragmentPath)
+{
+	shaders.push_back(new Shader(vertexPath, fragmentPath));
+}
+
+void OGLManager::useShader(int id)
+{
+	if (id<shaders.size()) shaders[id]->use();
+	else std::cout << "ERROR: No such shader id!\n";
+}
+
+Shader * OGLManager::getShader(int id)
+{
+	if (id < shaders.size())
+	{
+		return shaders[id];
+	}
+	else
+	{
+		std::cout << "ERROR: No such shader id!\n";
+		return NULL;
+	}
+}
+
 unsigned int makeTexture(string fileName)
 {
 	unsigned int tex;
@@ -78,11 +102,40 @@ void OGLManager::endDraw()
 	glfwPollEvents();
 }
 
-void OGLManager::updateProjectionForShader(Shader * shader)
+void OGLManager::updateProjectionForShader(int id)
 {
-	shader->setMatrix4f("projection", getProjection());
-	shader->setMatrix4f("view", getView());
-	shader->setMatrix4f("model", getModel());
+	if (id < shaders.size())
+	{
+		shaders[id]->use();
+		shaders[id]->setMatrix4f("projection", getProjection());
+		shaders[id]->setMatrix4f("view", getView());
+		shaders[id]->setMatrix4f("model", getModel());
+	}
+	else
+	{
+		std::cout << "ERROR: No such shader id!\n";
+	}	
+}
+
+void OGLManager::translateModel(glm::vec3 dir)
+{
+	setModel(
+		glm::translate(
+			getModel(),
+			dir
+		)
+	);
+}
+
+void OGLManager::rotateModel(float ang, glm::vec3 axis)
+{
+	setModel(
+		glm::rotate(
+			getModel(),
+			glm::radians(ang),
+			axis
+		)
+	);
 }
 
 void drawOurVBO(flarr verts, int verts_block_size, GLenum objType, int vertAttrSize)
@@ -131,7 +184,7 @@ void drawOurVBO(flarr verts, int verts_block_size, GLenum objType, int vertAttrS
 	glDeleteVertexArrays(1, &VAO);
 }
 
-void drawOurEBO(flarr verts, intarr inds, unsigned int tex, int verts_block_size)
+void drawOurEBO(flarr verts, intarr inds, unsigned int tex, int verts_block_size, bool usetex)
 {
 
 	//buffers
@@ -152,25 +205,52 @@ void drawOurEBO(flarr verts, intarr inds, unsigned int tex, int verts_block_size
 
 	glBindVertexArray(VAO);
 
-	if (verts_block_size >= 3)
+	if (verts_block_size == 3)
 	{
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)0);
 		glEnableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
+		glDisableVertexAttribArray(3);
 	}
 
-	if (verts_block_size >= 6)
+	if (verts_block_size == 6)
 	{
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
+		glDisableVertexAttribArray(3);
 	}
 
-	if (verts_block_size >= 8)
+	if (verts_block_size == 9)
 	{
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)(6 * sizeof(float)));
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)(3 * sizeof(float)));
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)(6 * sizeof(float)));
 		glEnableVertexAttribArray(2);
+		glDisableVertexAttribArray(3);
 	}
 
-	glBindTexture(GL_TEXTURE_2D, tex);
+	if (verts_block_size == 11)
+	{
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)(3 * sizeof(float)));
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)(6 * sizeof(float)));
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, verts_block_size * sizeof(float), (void*)(9 * sizeof(float)));
+		glEnableVertexAttribArray(3);
+	}
+
+	if (usetex)
+		glBindTexture(GL_TEXTURE_2D, tex);
+	else
+		glBindTexture(GL_TEXTURE_2D, 0);
 
 	glDrawElements(GL_TRIANGLES, inds.size(), GL_UNSIGNED_INT, 0);
 
@@ -253,7 +333,7 @@ void printBitmapText(Shader * sh, float tx, float ty, float size, string txt, un
 
 		glBindTexture(GL_TEXTURE_2D, fontTex);
 
-		drawOurEBO(letter_coords, letter_inds, fontTex, 8);
+		drawOurEBO(letter_coords, letter_inds, fontTex, 8, true);
 
 	}
 }
@@ -296,7 +376,7 @@ void drawLine(Shader * shad,glm::vec3 p1, glm::vec3 p2, glm::vec3 colour)
 	drawOurVBO(pointArrToFlArr({ p1, p2 }, colour, 1.0f, 1.0f, 1.0f), 6, GL_LINES, 3);
 }
 
-void DCappendPoint(glm::vec3 center, glm::vec3 radius, glm::vec3 d, glm::vec3 colour, glm::vec2 txcoords, flarr &verts)
+void DCappendPoint(glm::vec3 center, glm::vec3 radius, glm::vec3 d, glm::vec3 colour, glm::vec3 normal, glm::vec2 txcoords, flarr &verts)
 {
 	glm::vec3 cp = center + d * radius;
 	verts.push_back(cp.x);
@@ -305,81 +385,128 @@ void DCappendPoint(glm::vec3 center, glm::vec3 radius, glm::vec3 d, glm::vec3 co
 	verts.push_back(colour.r);
 	verts.push_back(colour.g);
 	verts.push_back(colour.b);
+	verts.push_back(normal.x);
+	verts.push_back(normal.y);
+	verts.push_back(normal.z);
 	verts.push_back(txcoords.x);
 	verts.push_back(txcoords.y);
 }
 
-void drawCube(Shader * shad, glm::vec3 center, glm::vec3 radius, glm::vec3 colour, unsigned int tex)
+void drawCube(Shader * shad, glm::vec3 center, glm::vec3 radius, glm::vec3 colour, unsigned int tex, bool usetex)
 {
 	shad->use();
 	flarr cubeVertices = {};
 	intarr cubeIndices = {};
 
+	//front (1-3)
 	//0
-	DCappendPoint(center, radius, glm::vec3(-1, -1, -1), glm::vec3(1, 1, 1), glm::vec2(0, 0), cubeVertices);
+	DCappendPoint(center, radius, glm::vec3(-1, -1, -1), colour, glm::vec3(0, 0, -1), glm::vec2(0, 0), cubeVertices);
 	//1
-	DCappendPoint(center, radius, glm::vec3(-1, 1, -1), glm::vec3(1, 1, 1), glm::vec2(0, 1), cubeVertices);
+	DCappendPoint(center, radius, glm::vec3(-1, 1, -1), colour, glm::vec3(0, 0, -1), glm::vec2(0, 1), cubeVertices);
 	//2
-	DCappendPoint(center, radius, glm::vec3(1, 1, -1), glm::vec3(1, 1, 1), glm::vec2(1, 1), cubeVertices);
+	DCappendPoint(center, radius, glm::vec3(1, 1, -1), colour, glm::vec3(0, 0, -1), glm::vec2(1, 1), cubeVertices);
 	//3
-	DCappendPoint(center, radius, glm::vec3(1, -1, -1), glm::vec3(1, 1, 1), glm::vec2(1, 0), cubeVertices);
+	DCappendPoint(center, radius, glm::vec3(1, -1, -1), colour, glm::vec3(0, 0, -1), glm::vec2(1, 0), cubeVertices);
+
+	//right
 	//4
-	DCappendPoint(center, radius, glm::vec3(-1, -1, 1), glm::vec3(1, 1, 1), glm::vec2(1, 0), cubeVertices);
+	DCappendPoint(center, radius, glm::vec3(1, -1, -1), colour, glm::vec3(1, 0, 0), glm::vec2(0, 0), cubeVertices);
 	//5
-	DCappendPoint(center, radius, glm::vec3(-1, 1, 1), glm::vec3(1, 1, 1), glm::vec2(1, 1), cubeVertices);
+	DCappendPoint(center, radius, glm::vec3(1, 1, -1), colour, glm::vec3(1, 0, 0), glm::vec2(0, 1), cubeVertices);
 	//6
-	DCappendPoint(center, radius, glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), glm::vec2(0, 1), cubeVertices);
+	DCappendPoint(center, radius, glm::vec3(1, 1, 1), colour, glm::vec3(1, 0, 0), glm::vec2(1, 1), cubeVertices);
 	//7
-	DCappendPoint(center, radius, glm::vec3(1, -1, 1), glm::vec3(1, 1, 1), glm::vec2(0, 0), cubeVertices);
+	DCappendPoint(center, radius, glm::vec3(1, -1, 1), colour, glm::vec3(1, 0, 0), glm::vec2(1, 0), cubeVertices);
+	
+	//back	
+	//8
+	DCappendPoint(center, radius, glm::vec3(1, -1, 1), colour, glm::vec3(0, 0, 1), glm::vec2(0, 0), cubeVertices);
+	//9
+	DCappendPoint(center, radius, glm::vec3(1, 1, 1), colour, glm::vec3(0, 0, 1), glm::vec2(0, 1), cubeVertices);
+	//10
+	DCappendPoint(center, radius, glm::vec3(-1, 1, 1), colour, glm::vec3(0, 0, 1), glm::vec2(1, 1), cubeVertices);
+	//11
+	DCappendPoint(center, radius, glm::vec3(-1, -1, 1), colour, glm::vec3(0, 0, 1), glm::vec2(1, 0), cubeVertices);
 
-	//1
+	//left
+	//12
+	DCappendPoint(center, radius, glm::vec3(-1, -1, 1), colour, glm::vec3(-1, 0, 0), glm::vec2(0, 0), cubeVertices);
+	//13
+	DCappendPoint(center, radius, glm::vec3(-1, 1, 1), colour, glm::vec3(-1, 0, 0), glm::vec2(0, 1), cubeVertices);
+	//14
+	DCappendPoint(center, radius, glm::vec3(-1, 1, -1), colour, glm::vec3(-1, 0, 0), glm::vec2(1, 1), cubeVertices);
+	//15
+	DCappendPoint(center, radius, glm::vec3(-1, -1, -1), colour, glm::vec3(-1, 0, 0), glm::vec2(1, 0), cubeVertices);
+	
+	//top
+	//16
+	DCappendPoint(center, radius, glm::vec3(-1, 1, -1), colour, glm::vec3(0, 0, 1), glm::vec2(0, 0), cubeVertices);
+	//17
+	DCappendPoint(center, radius, glm::vec3(-1, 1, 1), colour, glm::vec3(0, 0, 1), glm::vec2(0, 1), cubeVertices);
+	//18
+	DCappendPoint(center, radius, glm::vec3(1, 1, 1), colour, glm::vec3(0, 0, 1), glm::vec2(1, 1), cubeVertices);
+	//19
+	DCappendPoint(center, radius, glm::vec3(1, 1, -1), colour, glm::vec3(0, 0, 1), glm::vec2(1, 0), cubeVertices);
+
+	//bottom
+	//20
+	DCappendPoint(center, radius, glm::vec3(-1, -1, -1), colour, glm::vec3(0, 0, -1), glm::vec2(0, 0), cubeVertices);
+	//21
+	DCappendPoint(center, radius, glm::vec3(-1, -1, 1), colour, glm::vec3(0, 0, -1), glm::vec2(0, 1), cubeVertices);
+	//22
+	DCappendPoint(center, radius, glm::vec3(1, -1, 1), colour, glm::vec3(0, 0, -1), glm::vec2(1, 1), cubeVertices);
+	//23
+	DCappendPoint(center, radius, glm::vec3(1, -1, -1), colour, glm::vec3(0, 0, -1), glm::vec2(1, 0), cubeVertices);
+	
+
+	//front
 	cubeIndices.push_back(0);
 	cubeIndices.push_back(1);
-	cubeIndices.push_back(3);
-	cubeIndices.push_back(1);
-	cubeIndices.push_back(3);
 	cubeIndices.push_back(2);
-	//2
+	cubeIndices.push_back(0);
+	cubeIndices.push_back(2);
 	cubeIndices.push_back(3);
-	cubeIndices.push_back(2);
-	cubeIndices.push_back(7);
-	cubeIndices.push_back(2);
-	cubeIndices.push_back(7);
+	//r
+	cubeIndices.push_back(4);
+	cubeIndices.push_back(5);
 	cubeIndices.push_back(6);
+	cubeIndices.push_back(4);
+	cubeIndices.push_back(6);
+	cubeIndices.push_back(7);
 	//3
-	cubeIndices.push_back(4);
-	cubeIndices.push_back(5);
-	cubeIndices.push_back(7);
-	cubeIndices.push_back(5);
-	cubeIndices.push_back(7);
-	cubeIndices.push_back(6);
+	cubeIndices.push_back(8);
+	cubeIndices.push_back(9);
+	cubeIndices.push_back(10);
+	cubeIndices.push_back(8);
+	cubeIndices.push_back(10);
+	cubeIndices.push_back(11);
 	//4
-	cubeIndices.push_back(0);
-	cubeIndices.push_back(1);
-	cubeIndices.push_back(4);
-	cubeIndices.push_back(1);
-	cubeIndices.push_back(4);
-	cubeIndices.push_back(5);
+	cubeIndices.push_back(12);
+	cubeIndices.push_back(13);
+	cubeIndices.push_back(14);
+	cubeIndices.push_back(12);
+	cubeIndices.push_back(14);
+	cubeIndices.push_back(15);
 	//5
-	cubeIndices.push_back(1);
-	cubeIndices.push_back(5);
-	cubeIndices.push_back(2);
-	cubeIndices.push_back(5);
-	cubeIndices.push_back(2);
-	cubeIndices.push_back(6);
+	cubeIndices.push_back(16);
+	cubeIndices.push_back(17);
+	cubeIndices.push_back(18);
+	cubeIndices.push_back(16);
+	cubeIndices.push_back(18);
+	cubeIndices.push_back(19);
 	//6
-	cubeIndices.push_back(0);
-	cubeIndices.push_back(4);
-	cubeIndices.push_back(3);
-	cubeIndices.push_back(4);
-	cubeIndices.push_back(3);
-	cubeIndices.push_back(7);
+	cubeIndices.push_back(20);
+	cubeIndices.push_back(21);
+	cubeIndices.push_back(22);
+	cubeIndices.push_back(20);
+	cubeIndices.push_back(22);
+	cubeIndices.push_back(23);
 
-	drawOurEBO(cubeVertices, cubeIndices, tex, 8);
+	drawOurEBO(cubeVertices, cubeIndices, tex, 11, usetex);
 }
 
 
-void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, unsigned int tex)
+void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, unsigned int tex, bool usetex)
 {
 	shad->use();
 
@@ -395,6 +522,10 @@ void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, 
 	verts.push_back(colour.y);
 	verts.push_back(colour.z);
 
+	verts.push_back(0);
+	verts.push_back(0);
+	verts.push_back(1);
+
 	verts.push_back(0.0f);
 	verts.push_back(0.0f);
 
@@ -406,6 +537,10 @@ void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, 
 	verts.push_back(colour.x);
 	verts.push_back(colour.y);
 	verts.push_back(colour.z);
+
+	verts.push_back(0);
+	verts.push_back(0);
+	verts.push_back(1);
 
 	verts.push_back(0.0f);
 	verts.push_back(1.0f);
@@ -419,6 +554,10 @@ void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, 
 	verts.push_back(colour.y);
 	verts.push_back(colour.z);
 
+	verts.push_back(0);
+	verts.push_back(0);
+	verts.push_back(1);
+
 	verts.push_back(1.0f);
 	verts.push_back(1.0f);
 
@@ -431,8 +570,18 @@ void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, 
 	verts.push_back(colour.y);
 	verts.push_back(colour.z);
 
+	verts.push_back(0);
+	verts.push_back(0);
+	verts.push_back(1);
+
 	verts.push_back(1.0f);
 	verts.push_back(0.0f);
 
-	drawOurEBO(verts,inds,tex,8);
+	drawOurEBO(verts,inds,tex,11, usetex);
+}
+
+void clampVal(float &val, const float min, const float max)
+{
+	if (val < min) val = min;
+	if (val > max) val = max;
 }

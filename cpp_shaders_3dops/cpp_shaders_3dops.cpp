@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <chrono>
 #include <filesystem>
+#include <algorithm>
 #include "ourGraphics.h"
 #include "ourGraphicsFreeType.h"
 #include "ourGraphicsMeshes.h"
@@ -15,6 +16,19 @@ float rot_angle = 0.0f;
 float y_pos = 0.0f;
 float ampl = 30.0f;
 
+float lcr = 0.0f, lcb = 1.0f, lcg = 0.5;
+float spr = 0.2f, spb = -0.2f, spg = 0.2f;
+
+//lighting
+glm::vec3 ambient_colour = {1.0, 0.2, 0.2};
+float ambient_brightness = 0.3f;
+
+glm::vec3 light_colour = { 1.0, 1.0, 1.0 };
+glm::vec3 light_pos = { 0, 70, 20 };
+glm::vec3 camera_pos = {0,0,-100};
+float light_brightness = 1.0f;
+float specular_brightness = 0.5f;
+
 float getDeltaTime()
 {
 	auto now = std::chrono::steady_clock::now();
@@ -28,13 +42,20 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	glViewport(0, 0, width, height);
 }
 
+void updateColorMotion(float &vval, float &vspd, float dt)
+{
+	vval += vspd * dt;
+	if ((vval > 1) || (vval < 0)) { vspd *= -1.0f; clampVal(vval, 0.0f, 1.0f); }
+}
+
 int main()
 {
 	OGLManager oMan(800, 600, framebuffer_size_callback);
 	glClearColor(0.0f,0.0f,0.0f,1.0f);
 	glEnable(GL_DEPTH_TEST);
 
-	Shader * shad = new Shader("shader_font_vert.gls", "shader_font_frag.gls");
+	oMan.addShader("shader_light_vert.gls", "shader_light_frag.gls");
+	oMan.addShader("shader_chart_vert.gls", "shader_chart_frag.gls");
 
 	unsigned int tex = makeTexture("test_img.png");
 	unsigned int tex2 = makeTexture("test_img2.png");
@@ -43,141 +64,116 @@ int main()
 
 	//Model objMod("shtuka.obj");
 	//Model objMod("crank_handle.obj");
-	Model objMod("house_fbx.fbx");
+	Model objMod("sphere.obj");
 
 	while (!glfwWindowShouldClose(oMan.window))
 	{
-
 		float deltaTime = getDeltaTime();
 
 		glfwGetWindowSize(oMan.window, &winx, &winy);
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glm::mat4 mat_persp = glm::perspectiveFov(
+			(float)winx / (float)winy,
+			(float)winx, (float)winy, 0.01f, 1000.0f);
 
-		//draw first object
+		glm::mat4 mat_view = glm::translate(glm::mat4(1.0),
+			camera_pos);
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+		//set lighting uniforms for shader
+		oMan.useShader(0);
+		oMan.getShader(0)->setBool("useColour", true);
+		oMan.getShader(0)->setBool("useLight", true);
+		oMan.getShader(0)->setBool("useTexture", true);
+				
+		updateColorMotion(lcr, spr, deltaTime);
+		updateColorMotion(lcg, spg, deltaTime);
+		updateColorMotion(lcb, spb, deltaTime);
+		
+		light_colour.r = lcr; light_colour.g = lcg; light_colour.b = lcb;
+
+		float lcx, lcy, lcz;
+
+		lcx = 100.0f * sin(0.25f*rot_angle);
+		lcy = 100.0f * cos(0.25f*rot_angle);
+		lcz = 50.0f * sin(0.25f*rot_angle);
+
+		light_pos.x = lcx; light_pos.y = lcy; light_pos.z = lcz;
+
+		oMan.getShader(0)->setVector3f("ambientColor", ambient_colour.r, ambient_colour.g, ambient_colour.b);
+		oMan.getShader(0)->setFloat("ambientBrightness", ambient_brightness);
+
+		oMan.getShader(0)->setVector3f("lightPos", light_pos.x, light_pos.y, light_pos.z);
+		oMan.getShader(0)->setVector3f("lightColor", light_colour.r, light_colour.g, light_colour.b);
+		oMan.getShader(0)->setFloat("lightBrightness", light_brightness);
+
+		oMan.getShader(0)->setVector3f("camPos", camera_pos.x, camera_pos.y, camera_pos.z);
+		oMan.getShader(0)->setFloat("specularBrightness", specular_brightness);
 
 		oMan.setDefaultProjections();
 
-		oMan.setProjection(glm::perspectiveFov(
-			(float)winx/(float)winy,
-			(float)winx, (float)winy, 0.01f, 1000.0f)
-		);
+		oMan.setProjection(mat_persp);
+		oMan.setView(mat_view);
 
-		oMan.setView(glm::translate(oMan.getView(),
-			glm::vec3(0.0f,0.0f,-100.0f)));
 
+		//draw first object
+		
 		//orient model as we need
-		oMan.setModel(
-			glm::rotate(
-				oMan.getModel(), 
-				glm::radians(180.0f),
-				glm::vec3(0.0f, 0.0f, 1.0f)
-			)
-		);
+		oMan.rotateModel(180.0f,glm::vec3(0.0f, 0.0f, 1.0f));
 
 		//rotate model in real time
 
 		rot_angle += 10.0f * deltaTime;
 
-		oMan.setModel(
-			glm::rotate(
-				oMan.getModel(),
-				glm::radians(rot_angle),
-				glm::vec3(0.0f, 1.0f, 0.0f)
-			)
-		);
+		oMan.rotateModel(rot_angle,	glm::vec3(0.0f, 1.0f, 0.0f));
 
 		//translate model in real time
 		y_pos = ampl * sin((10 * rot_angle)*3.14f / 180.0f);
-		oMan.setModel(
-			glm::translate(
-				oMan.getModel(),
-				glm::vec3(0.0f, y_pos, 0.0f)
-			)
-		);
 
-		shad->use();
-		shad->setMatrix4f("model", oMan.getModel());
-		shad->setMatrix4f("view", oMan.getView());
-		shad->setMatrix4f("projection", oMan.getProjection());
+		oMan.translateModel(glm::vec3(0.0f, y_pos, 0.0f));
 
-		drawPlane(shad,glm::vec3(0,0,0),glm::vec3(50.0f,50.0f,0.0f),
-			glm::vec3(1.0),tex);
+		oMan.updateProjectionForShader(0);
+
+		drawPlane(oMan.getShader(0),glm::vec3(0,0,0),glm::vec3(50.0f,50.0f,0.0f),
+			glm::vec3(1.0),tex,true);
 
 		//draw second object
 
-		oMan.setDefaultProjections();
+		oMan.resetModel();
 
-		oMan.setProjection(glm::perspectiveFov(
-			(float)winx / (float)winy,
-			(float)winx, (float)winy, 0.01f, 1000.0f)
-		);
+		oMan.translateModel(glm::vec3(-60.0f, 0.0f, -20.0f));
+		oMan.rotateModel(rot_angle,	glm::vec3(0.0f, 1.0f, 0.0f));
 
-		oMan.setView(glm::translate(oMan.getView(),
-			glm::vec3(0.0f, 0.0f, -100.0f)));
-
-		oMan.setModel(
-			glm::translate(
-				oMan.getModel(),
-				glm::vec3(-60.0f, 0.0f, -20.0f)
-			)
-		);
-
-		oMan.setModel(
-			glm::rotate(
-				oMan.getModel(),
-				glm::radians(rot_angle),
-				glm::vec3(0.0f, 1.0f, 0.0f)
-			)
-		);
-
-		shad->setMatrix4f("model", oMan.getModel());
-		shad->setMatrix4f("view", oMan.getView());
-		shad->setMatrix4f("projection", oMan.getProjection());
-
-		drawCube(shad, glm::vec3(0.0f), glm::vec3(25.0f), glm::vec3(1.0f), tex2);
+		oMan.updateProjectionForShader(0);
+		oMan.getShader(0)->setBool("useColour", false);
+		oMan.getShader(0)->setBool("useTexture", true);
+		oMan.getShader(0)->setBool("useLight", true);
+		drawCube(oMan.getShader(0), glm::vec3(0.0f), glm::vec3(25.0f), glm::vec3(1.0f), tex2, true);
 
 		//drawmodel
 
-		oMan.setDefaultProjections();
+		oMan.resetModel();
 
-		oMan.setProjection(glm::perspectiveFov(
-			(float)winx / (float)winy,
-			(float)winx, (float)winy, 0.01f, 1000.0f)
-		);
+		oMan.translateModel(glm::vec3(60.0f, 0.0f, -20.0f));
+		oMan.rotateModel(rot_angle,	glm::vec3(0.0f, 1.0f, 0.0f));
 
-		oMan.setView(glm::translate(oMan.getView(),
-			glm::vec3(0.0f, 0.0f, -100.0f)));
-
-		oMan.setModel(
-			glm::translate(
-				oMan.getModel(),
-				glm::vec3(60.0f, 0.0f, -20.0f)
-			)
-		);
-
-		oMan.setModel(
-			glm::scale(
-				oMan.getModel(),
-				glm::vec3(20.0f, 20.0f, 20.0f)
-			)
-		);
-
-		oMan.setModel(
-			glm::rotate(
-				oMan.getModel(),
-				glm::radians(rot_angle),
-				glm::vec3(0.0f, 1.0f, 0.0f)
-			)
-		);
-
-		shad->setMatrix4f("model", oMan.getModel());
-		shad->setMatrix4f("view", oMan.getView());
-		shad->setMatrix4f("projection", oMan.getProjection());
+		oMan.updateProjectionForShader(0);
+		oMan.getShader(0)->setBool("useColour", false);
+		oMan.getShader(0)->setBool("useTexture", true);
+		oMan.getShader(0)->setBool("useLight", true);
 
 		glBindTexture(GL_TEXTURE_2D, tex4);
 
-		objMod.Draw(shad);
+		objMod.Draw(oMan.getShader(0));
+
+		//draw source
+		oMan.resetModel();
+
+		oMan.translateModel(light_pos);
+
+		oMan.updateProjectionForShader(1);
+		drawCube(oMan.getShader(1), glm::vec3(0.0f), glm::vec3(9.0f,9.0f,9.0f),light_colour,0,false);
 		
 		oMan.endDraw();
 
