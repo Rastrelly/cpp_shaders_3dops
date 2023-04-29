@@ -64,7 +64,7 @@ int main()
 
 	//Model objMod("shtuka.obj");
 	//Model objMod("crank_handle.obj");
-	Model objMod("sphere.obj");
+	Model objMod("house_obj.obj");
 
 	while (!glfwWindowShouldClose(oMan.window))
 	{
@@ -166,6 +166,20 @@ int main()
 		glBindTexture(GL_TEXTURE_2D, tex4);
 
 		objMod.Draw(oMan.getShader(0));
+
+		//draw big botom plane
+		oMan.resetModel();
+
+		oMan.translateModel(glm::vec3(0.0f, -110.0f, 0.0f));
+		oMan.rotateModel(-90, glm::vec3(1.0f, 0.0f, 0.0f));
+
+		oMan.updateProjectionForShader(0);
+		oMan.getShader(0)->setBool("useColour", true);
+		oMan.getShader(0)->setBool("useTexture", false);
+		oMan.getShader(0)->setBool("light.use", true);
+
+		drawPlane(oMan.getShader(0), glm::vec3(0, 0, 0), glm::vec3(250.0f, 250.0f, 0.0f),
+			glm::vec3(1.0,0.4,0.4), 0, false);
 
 		//draw source
 		oMan.resetModel();
