@@ -2,11 +2,14 @@
 #include <chrono>
 #include <filesystem>
 #include <algorithm>
+#include <vector>
 #include "ourGraphics.h"
 #include "ourGraphicsFreeType.h"
 #include "ourGraphicsMeshes.h"
 
 using namespace std::chrono;
+
+bool drawChart = true;
 
 steady_clock::time_point lastUpdate = steady_clock::now();
 
@@ -29,6 +32,24 @@ glm::vec3 camera_pos = {0,0,-100};
 float light_brightness = 1.0f;
 float specular_brightness = 0.5f;
 
+std::vector<glm::vec3> chart_points = {};
+
+//make our data for surface generation
+void fill_chart(float x1, float x2, float y1, float y2, int density, std::vector<glm::vec3> &cdata)
+{
+	cdata.clear();
+	float dx = (x2 - x1) / (float)density;
+	float dy = (y2 - y1) / (float)density;
+	for (int j = 0; j < density; j++)
+		for (int i = 0; i < density; i++)
+		{
+			float cx = x1 + dx * (float)i;
+			float cy = y1 + dy * (float)j;
+			float cz = 5*sin(0.3*cx) + 10 * cos(0.5 * cy); //any function
+			cdata.push_back(glm::vec3(cx,cy,cz));
+		}
+}
+
 float getDeltaTime()
 {
 	auto now = std::chrono::steady_clock::now();
@@ -50,6 +71,9 @@ void updateColorMotion(float &vval, float &vspd, float dt)
 
 int main()
 {
+
+	fill_chart(-100,100,-100,100,100,chart_points);
+	
 	OGLManager oMan(800, 600, framebuffer_size_callback);
 	glClearColor(0.0f,0.0f,0.0f,1.0f);
 	glEnable(GL_DEPTH_TEST);
@@ -116,79 +140,101 @@ int main()
 		oMan.setProjection(mat_persp);
 		oMan.setView(mat_view);
 
+		if (!drawChart)
+		{
+			//draw first object
 
-		//draw first object
-		
-		//orient model as we need
-		oMan.rotateModel(180.0f,glm::vec3(0.0f, 0.0f, 1.0f));
+			//orient model as we need
+			oMan.rotateModel(180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 
-		//rotate model in real time
+			//rotate model in real time
 
-		rot_angle += 10.0f * deltaTime;
+			rot_angle += 10.0f * deltaTime;
 
-		oMan.rotateModel(rot_angle,	glm::vec3(0.0f, 1.0f, 0.0f));
+			oMan.rotateModel(rot_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
-		//translate model in real time
-		y_pos = ampl * sin((10 * rot_angle)*3.14f / 180.0f);
+			//translate model in real time
+			y_pos = ampl * sin((10 * rot_angle)*3.14f / 180.0f);
 
-		oMan.translateModel(glm::vec3(0.0f, y_pos, 0.0f));
+			oMan.translateModel(glm::vec3(0.0f, y_pos, 0.0f));
 
-		oMan.updateProjectionForShader(0);
+			oMan.updateProjectionForShader(0);
 
-		drawPlane(oMan.getShader(0),glm::vec3(0,0,0),glm::vec3(50.0f,50.0f,0.0f),
-			glm::vec3(1.0),tex,true);
+			drawPlane(oMan.getShader(0), glm::vec3(0, 0, 0), glm::vec3(50.0f, 50.0f, 0.0f),
+				glm::vec3(1.0), tex, true);
 
-		//draw second object
+			//draw second object
 
-		oMan.resetModel();
+			oMan.resetModel();
 
-		oMan.translateModel(glm::vec3(-60.0f, 0.0f, -20.0f));
-		oMan.rotateModel(rot_angle,	glm::vec3(0.0f, 1.0f, 0.0f));
+			oMan.translateModel(glm::vec3(-60.0f, 0.0f, -20.0f));
+			oMan.rotateModel(rot_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
-		oMan.updateProjectionForShader(0);
-		oMan.getShader(0)->setBool("useColour", false);
-		oMan.getShader(0)->setBool("useTexture", true);
-		oMan.getShader(0)->setBool("light.use", true);
-		drawCube(oMan.getShader(0), glm::vec3(0.0f), glm::vec3(25.0f), glm::vec3(1.0f), tex2, true);
+			oMan.updateProjectionForShader(0);
+			oMan.getShader(0)->setBool("useColour", false);
+			oMan.getShader(0)->setBool("useTexture", true);
+			oMan.getShader(0)->setBool("light.use", true);
+			drawCube(oMan.getShader(0), glm::vec3(0.0f), glm::vec3(25.0f), glm::vec3(1.0f), tex2, true);
 
-		//drawmodel
+			//drawmodel
 
-		oMan.resetModel();
+			oMan.resetModel();
 
-		oMan.translateModel(glm::vec3(60.0f, 0.0f, -20.0f));
-		oMan.rotateModel(rot_angle,	glm::vec3(0.0f, 1.0f, 0.0f));
+			oMan.translateModel(glm::vec3(60.0f, 0.0f, -20.0f));
+			oMan.rotateModel(rot_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
-		oMan.updateProjectionForShader(0);
-		oMan.getShader(0)->setBool("useColour", false);
-		oMan.getShader(0)->setBool("useTexture", true);
-		oMan.getShader(0)->setBool("light.use", true);
+			oMan.updateProjectionForShader(0);
+			oMan.getShader(0)->setBool("useColour", false);
+			oMan.getShader(0)->setBool("useTexture", true);
+			oMan.getShader(0)->setBool("light.use", true);
 
-		glBindTexture(GL_TEXTURE_2D, tex4);
+			glBindTexture(GL_TEXTURE_2D, tex4);
 
-		objMod.Draw(oMan.getShader(0));
+			objMod.Draw(oMan.getShader(0));
 
-		//draw big botom plane
-		oMan.resetModel();
+			//draw big botom plane
+			oMan.resetModel();
 
-		oMan.translateModel(glm::vec3(0.0f, -110.0f, 0.0f));
-		oMan.rotateModel(-90, glm::vec3(1.0f, 0.0f, 0.0f));
+			oMan.translateModel(glm::vec3(0.0f, -110.0f, 0.0f));
+			oMan.rotateModel(-90, glm::vec3(1.0f, 0.0f, 0.0f));
 
-		oMan.updateProjectionForShader(0);
-		oMan.getShader(0)->setBool("useColour", true);
-		oMan.getShader(0)->setBool("useTexture", false);
-		oMan.getShader(0)->setBool("light.use", true);
+			oMan.updateProjectionForShader(0);
+			oMan.getShader(0)->setBool("useColour", true);
+			oMan.getShader(0)->setBool("useTexture", false);
+			oMan.getShader(0)->setBool("light.use", true);
 
-		drawPlane(oMan.getShader(0), glm::vec3(0, 0, 0), glm::vec3(250.0f, 250.0f, 0.0f),
-			glm::vec3(1.0,0.4,0.4), 0, false);
+			drawPlane(oMan.getShader(0), glm::vec3(0, 0, 0), glm::vec3(250.0f, 250.0f, 0.0f),
+				glm::vec3(1.0, 0.4, 0.4), 0, false);
 
-		//draw source
-		oMan.resetModel();
+			//draw source
+			oMan.resetModel();
 
-		oMan.translateModel(light_pos);
+			oMan.translateModel(light_pos);
 
-		oMan.updateProjectionForShader(1);
-		drawCube(oMan.getShader(1), glm::vec3(0.0f), glm::vec3(9.0f,9.0f,9.0f),light_colour,0,false);
-		
+			oMan.updateProjectionForShader(1);
+			drawCube(oMan.getShader(1), glm::vec3(0.0f), glm::vec3(9.0f, 9.0f, 9.0f), light_colour, 0, false);
+		}
+		else
+		{
+			//set modes
+			oMan.getShader(0)->setBool("useColour", true);
+			oMan.getShader(0)->setBool("useTexture", false);
+			oMan.getShader(0)->setBool("light.use", true);
+
+			//orient model as we need
+			oMan.rotateModel(-45.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+
+			//rotate model in real time
+
+			rot_angle += 10.0f * deltaTime;
+
+			oMan.rotateModel(rot_angle, glm::vec3(0.0f, 0.0f, 1.0f));
+			oMan.updateProjectionForShader(0);
+
+			drawSurface(oMan.getShader(0), chart_points);
+
+		}
+
 		oMan.endDraw();
 
 	}

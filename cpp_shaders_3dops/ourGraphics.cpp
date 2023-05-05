@@ -2,6 +2,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+bool fileWrote = false;
+bool surfVertNeedUpdate = false;
+flarr surfVerts = {};
+intarr surfInds = {};
+
 OGLManager::OGLManager(int pwx, int pwy, GLFWframebuffersizefun callback)
 {
 	initOGL(pwx, pwy, callback);
@@ -578,6 +583,140 @@ void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, 
 	verts.push_back(0.0f);
 
 	drawOurEBO(verts,inds,tex,11, usetex);
+}
+
+void coordsbyid(int w, int id, int size, int &x, int &y)
+{
+	int i = -1;
+	int cx = -1; int cy = 0;
+	int cnt = 0;
+	while (cnt < id)
+	{
+		cnt++;
+		cx++;
+		if (cx > w) {
+			cx = 0; cy++;
+		}
+	}
+	x = cx; y = cy;
+}
+
+
+void drawSurface(Shader * shad, vector<glm::vec3> surf_points)
+{
+	shad->use();
+
+	glm::vec3 colour = glm::vec3(1.0f,0.0f,0.0f);
+
+	if (surfVerts.size() == 0) surfVertNeedUpdate = true;
+
+	if (surfVertNeedUpdate)
+	{
+		surfVertNeedUpdate = false;
+
+		vector<glm::vec3> norms = {};
+
+		int l = surf_points.size();
+		int s = sqrtf((float)l);
+
+		for (int i = 0; i < surf_points.size() - 1; i++)
+		{
+			int ci = 0; int cj = 0;
+			coordsbyid(s, i, l, ci, cj);
+
+			//cout << "Checking coords: " << ci << ";" << cj << endl;
+
+			if ((ci < s - 1) && (cj < s - 1))
+			{
+				if ((i + s + 1) < l)
+				{
+					glm::vec3 p1 = surf_points[i];
+					glm::vec3 p2 = surf_points[i + 1];
+					glm::vec3 p3 = surf_points[i + s];
+					glm::vec3 p4 = surf_points[i + s + 1];
+
+					glm::vec3 n1 = glm::vec3(1.0);
+					glm::vec3 n2 = glm::vec3(1.0);
+
+					glm::vec3 u = p2 - p1;
+					glm::vec3 v = p3 - p2;
+
+					n1.x = u.y*v.z - u.z*v.y;
+					n1.y = u.z*v.x - u.x*v.z;
+					n1.z = u.x*v.y - u.y*v.x;
+
+					u = p4 - p3;
+					v = p4 - p1;
+
+					n2.x = u.y*v.z - u.z*v.y;
+					n2.y = u.z*v.x - u.x*v.z;
+					n2.z = u.x*v.y - u.y*v.x;
+
+					glm::vec3 n = (n1 + n2) * glm::vec3(0.5f);
+					norms.push_back(n);
+				}
+				else norms.push_back(norms[norms.size() - 1]);
+			}
+			else
+			{
+				norms.push_back(norms[norms.size() - 1]);
+			}
+		}
+
+		flarr verts = {};
+		intarr inds = {};
+
+		for (int i = 0; i < surf_points.size() - 1; i++)
+		{
+			//cout << "Making verts " << i << endl;
+			verts.push_back(surf_points[i].x);
+			verts.push_back(surf_points[i].y);
+			verts.push_back(surf_points[i].z);
+			verts.push_back(colour.r);
+			verts.push_back(colour.g);
+			verts.push_back(colour.b);
+			verts.push_back(norms[i].x);
+			verts.push_back(norms[i].y);
+			verts.push_back(norms[i].z);
+			verts.push_back(0.0f);
+			verts.push_back(0.0f);
+		}
+
+		int counter = 0;
+		for (int j = 0; j < s; j++)
+			for (int i = 0; i < s; i++)
+			{
+				if ((i < s - 1) && (j < s - 1))
+				{
+					inds.push_back(counter);
+					inds.push_back(counter + 1);
+					inds.push_back(counter + s + 1);
+					inds.push_back(counter);
+					inds.push_back(counter + s);
+					inds.push_back(counter + s + 1);
+				}
+				counter++;
+			}
+
+		if (!fileWrote)
+		{
+			fileWrote = true;
+			std::ofstream resultfile("vertex_gen.txt");
+			for (int i = 0; i < verts.size() - 1; i += 11)
+			{
+				resultfile << verts[i] << " " << verts[i + 1] << " " << verts[i + 2] << " " << verts[i + 3] << " " << verts[i + 4] << " " << verts[i + 5] << " " << verts[i + 6] << " " << verts[i + 7] << " " << verts[i + 8] << " " << verts[i + 9] << " " << verts[i + 10] << endl;
+			}
+
+			for (int i = 0; i < inds.size() - 1; i += 3)
+			{
+				resultfile << inds[i] << "->" << inds[i + 1] << "->" << inds[i + 2] << endl;
+			}
+			resultfile.close();
+		}
+		surfInds = inds;
+		surfVerts = verts;
+	}
+	drawOurEBO(surfVerts, surfInds, 0, 11, false);
 }
 
 void clampVal(float &val, const float min, const float max)

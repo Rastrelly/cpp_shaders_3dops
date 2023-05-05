@@ -6,6 +6,8 @@
 #include <string>
 #include <cctype>
 
+#include <iostream>
+
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 
@@ -75,5 +77,6 @@ float scaleVal(float val, float scale);
 void drawLine(Shader * shad, glm::vec3 p1, glm::vec3 p2, glm::vec3 colour);
 void drawCube(Shader * shad, glm::vec3 center, glm::vec3 radius, glm::vec3 colour, unsigned int tex, bool usetex);
 void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, unsigned int tex, bool usetex);
+void drawSurface(Shader * shad, vector<glm::vec3> surf_points);
 
 void clampVal(float &val, const float min, const float max);
