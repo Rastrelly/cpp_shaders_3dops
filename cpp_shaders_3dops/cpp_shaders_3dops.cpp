@@ -10,12 +10,17 @@
 using namespace std::chrono;
 
 bool drawChart = true;
+bool lMouseDown = false;
+
+double pMouseX=0, pMouseY=0, mouseX=0, mouseY=0;
+double rot_speed_coeff = 0.1;
 
 steady_clock::time_point lastUpdate = steady_clock::now();
 
 int winx=0.0f, winy=0.0f;
 
 float rot_angle = 0.0f;
+float rot_angle_light = 30.0f;
 float y_pos = 0.0f;
 float ampl = 30.0f;
 
@@ -28,11 +33,16 @@ float ambient_brightness = 0.3f;
 
 glm::vec3 light_colour = { 1.0, 1.0, 1.0 };
 glm::vec3 light_pos = { 0, 70, 20 };
-glm::vec3 camera_pos = {0,0,-100};
+glm::vec3 camera_pos = {0,0,-1};
+float camera_orbit = 100.0f;
+
+double orb_change_speed_coeff = -3;
+
 float light_brightness = 1.0f;
 float specular_brightness = 0.5f;
 
 std::vector<glm::vec3> chart_points = {};
+
 
 //make our data for surface generation
 void fill_chart(float x1, float x2, float y1, float y2, int density, std::vector<glm::vec3> &cdata)
@@ -45,7 +55,7 @@ void fill_chart(float x1, float x2, float y1, float y2, int density, std::vector
 		{
 			float cx = x1 + dx * (float)i;
 			float cy = y1 + dy * (float)j;
-			float cz = 5*sin(0.3*cx) + 10 * cos(0.5 * cy); //any function
+			float cz = 5*sin(0.1*cx) + 10 * cos(0.2 * cy); //any function
 			cdata.push_back(glm::vec3(cx,cy,cz));
 		}
 }
@@ -57,6 +67,54 @@ float getDeltaTime()
 	lastUpdate = now;
 	return deltaTime;
 }
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+	{
+		rot_angle += 20;
+		if (rot_angle > 360) rot_angle = 0;
+	}
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+	{
+		rot_angle -= 20;
+		if (rot_angle < 0) rot_angle = 360;
+	}
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	{
+		lMouseDown = true;
+	}
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	{
+		lMouseDown = false;
+	}
+}
+
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	pMouseX = mouseX;
+	pMouseY = mouseY;
+	mouseX = xpos;
+	mouseY = ypos;
+
+	double dmx = mouseX - pMouseX;
+	double dmy = mouseY - pMouseY;
+
+	if (lMouseDown)
+	{
+		rot_angle += dmx * rot_speed_coeff;
+	}
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	camera_orbit += yoffset * orb_change_speed_coeff;
+}
+
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -72,9 +130,14 @@ void updateColorMotion(float &vval, float &vspd, float dt)
 int main()
 {
 
-	fill_chart(-100,100,-100,100,100,chart_points);
+	fill_chart(-100,100,-100,100,200,chart_points);
 	
 	OGLManager oMan(800, 600, framebuffer_size_callback);
+	glfwSetKeyCallback(oMan.window, key_callback); //keyboard events
+	glfwSetMouseButtonCallback(oMan.window, mouse_button_callback); //mouse button events
+	glfwSetCursorPosCallback(oMan.window, cursor_position_callback); //mouse cursor pos events
+	glfwSetScrollCallback(oMan.window, scroll_callback);  //mouse wheel or touchpad scrolling events
+
 	glClearColor(0.0f,0.0f,0.0f,1.0f);
 	glEnable(GL_DEPTH_TEST);
 
@@ -100,10 +163,21 @@ int main()
 			(float)winx / (float)winy,
 			(float)winx, (float)winy, 0.01f, 1000.0f);
 
-		glm::mat4 mat_view = glm::translate(glm::mat4(1.0),
-			camera_pos);
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glm::mat4 mat_view = glm::mat4(1.0);
+
+		mat_view = glm::translate(mat_view,
+			camera_pos*camera_orbit);
+		
+		mat_view = glm::rotate(
+			mat_view,
+			glm::radians(rot_angle),
+			glm::vec3(0.0f,1.0f,0.0f)
+		);
+
+		
+
+	    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
 		//set lighting uniforms for shader
 		oMan.useShader(0);
@@ -119,9 +193,9 @@ int main()
 
 		float lcx, lcy, lcz;
 
-		lcx = 100.0f * sin(0.25f*rot_angle);
-		lcy = 100.0f * cos(0.25f*rot_angle);
-		lcz = 50.0f * sin(0.25f*rot_angle);
+		lcx = 100.0f * sin(0.25f*rot_angle_light);
+		lcy = 100.0f * cos(0.25f*rot_angle_light);
+		lcz = 50.0f * sin(0.25f*rot_angle_light);
 
 		light_pos.x = lcx; light_pos.y = lcy; light_pos.z = lcz;
 
@@ -226,9 +300,9 @@ int main()
 
 			//rotate model in real time
 
-			rot_angle += 10.0f * deltaTime;
+			//rot_angle += 10.0f * deltaTime;
 
-			oMan.rotateModel(rot_angle, glm::vec3(0.0f, 0.0f, 1.0f));
+			//oMan.rotateModel(rot_angle, glm::vec3(0.0f, 0.0f, 1.0f));
 			oMan.updateProjectionForShader(0);
 
 			drawSurface(oMan.getShader(0), chart_points);

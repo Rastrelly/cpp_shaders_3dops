@@ -7,6 +7,17 @@ bool surfVertNeedUpdate = false;
 flarr surfVerts = {};
 intarr surfInds = {};
 
+vector<glm::vec3> colourtable =
+{
+glm::vec3(163.0f / 255.0f,  73.0f / 255.0f, 163.0f / 255.0f), //purple
+glm::vec3(63.0f / 255.0f,  72.0f / 255.0f, 204.0f / 255.0f), //blue
+glm::vec3(0.0f / 255.0f, 162.0f / 255.0f, 232.0f / 255.0f), //light blue
+glm::vec3(34.0f / 255.0f, 177.0f / 255.0f,  76.0f / 255.0f), //green
+glm::vec3(255.0f / 255.0f, 243.0f / 255.0f,   0.0f / 255.0f), //yellow
+glm::vec3(255.0f / 255.0f, 127.0f / 255.0f,  39.0f / 255.0f), //orange
+glm::vec3(237.0f / 255.0f,  28.0f / 255.0f,  36.0f / 255.0f)  //red
+};
+
 OGLManager::OGLManager(int pwx, int pwy, GLFWframebuffersizefun callback)
 {
 	initOGL(pwx, pwy, callback);
@@ -585,20 +596,73 @@ void drawPlane(Shader * shad, glm::vec3 p1, glm::vec3 radius, glm::vec3 colour, 
 	drawOurEBO(verts,inds,tex,11, usetex);
 }
 
-void coordsbyid(int w, int id, int size, int &x, int &y)
+void coordsbyid(int w, int id, int size, int &x, int &y, bool hardway)
 {
-	int i = -1;
-	int cx = -1; int cy = 0;
-	int cnt = 0;
-	while (cnt < id)
+	if (!hardway)
 	{
-		cnt++;
-		cx++;
-		if (cx > w) {
-			cx = 0; cy++;
-		}
+		y = trunc(id / w);
+		x = id - w * y;
 	}
-	x = cx; y = cy;
+	
+	if (hardway)
+	{
+		int i = -1;
+		int cx = -1; int cy = 0;
+		int cnt = 0;
+		while (cnt < id)
+		{
+			cnt++;
+			cx++;
+			if (cx > w) {
+				cx = 0; cy++;
+			}
+		}
+		x = cx; y = cy;
+	}
+}
+
+float linterp(float x0, float x1, float y0, float y1, float x)
+{
+	if ((x1 != x0) && (y1!=y0))
+		return y0 + (x - x0)*((y1 - y0) / (x1 - x0));
+	else
+		return y0;
+}
+
+
+void calcColour(float val, float min, float max, glm::vec3 &colour)
+{
+	float prop = (val - min) / (max - min);
+
+	clampVal(prop,0.0f,1.0f);
+
+	float dc = 1/(float)colourtable.size();
+
+	float cdc = -dc;
+	int cid = -1;
+
+	while (cdc < prop)
+	{
+		cdc += dc;
+		if (cdc < prop)	cid++;
+	}
+
+	if (cid >= colourtable.size()-1) cid = colourtable.size() - 2;
+	if (cid <= 0) cid = 0;
+
+	float p1 = 0.0f;
+	float p2 = 0.0f;
+	glm::vec3 c1 = glm::vec3(1.0f);
+	glm::vec3 c2 = glm::vec3(1.0f);
+
+    c1 = colourtable[cid];
+    c2 = colourtable[cid + 1];
+	p1 = dc * cid;
+	p2 = dc * (cid + 1);
+	
+	colour.r = linterp(p1, p2, c1.r, c2.r, prop);
+	colour.g = linterp(p1, p2, c1.g, c2.g, prop);
+	colour.b = linterp(p1, p2, c1.b, c2.b, prop);
 }
 
 
@@ -619,10 +683,10 @@ void drawSurface(Shader * shad, vector<glm::vec3> surf_points)
 		int l = surf_points.size();
 		int s = sqrtf((float)l);
 
-		for (int i = 0; i < surf_points.size() - 1; i++)
+		for (int i = 0; i < surf_points.size(); i++)
 		{
 			int ci = 0; int cj = 0;
-			coordsbyid(s, i, l, ci, cj);
+			coordsbyid(s, i, l, ci, cj, false);
 
 			//cout << "Checking coords: " << ci << ";" << cj << endl;
 
@@ -661,17 +725,23 @@ void drawSurface(Shader * shad, vector<glm::vec3> surf_points)
 			{
 				norms.push_back(norms[norms.size() - 1]);
 			}
+
+			if (i % 100 == 0) cout << "Processing verts: " << i << " of " << surf_points.size() << endl;
+
 		}
 
 		flarr verts = {};
 		intarr inds = {};
 
-		for (int i = 0; i < surf_points.size() - 1; i++)
+		for (int i = 0; i < surf_points.size(); i++)
 		{
 			//cout << "Making verts " << i << endl;
 			verts.push_back(surf_points[i].x);
 			verts.push_back(surf_points[i].y);
 			verts.push_back(surf_points[i].z);
+
+			calcColour(surf_points[i].z, -10, 10, colour);
+
 			verts.push_back(colour.r);
 			verts.push_back(colour.g);
 			verts.push_back(colour.b);
@@ -680,6 +750,8 @@ void drawSurface(Shader * shad, vector<glm::vec3> surf_points)
 			verts.push_back(norms[i].z);
 			verts.push_back(0.0f);
 			verts.push_back(0.0f);
+
+			if (i % 100 == 0) cout << "Building verts: " << i << " of " << surf_points.size() << endl;
 		}
 
 		int counter = 0;
@@ -696,6 +768,7 @@ void drawSurface(Shader * shad, vector<glm::vec3> surf_points)
 					inds.push_back(counter + s + 1);
 				}
 				counter++;
+				if (i % 100 == 0) cout << "Building inds: " << counter << " of " << surf_points.size() << endl;
 			}
 
 		if (!fileWrote)
@@ -705,11 +778,13 @@ void drawSurface(Shader * shad, vector<glm::vec3> surf_points)
 			for (int i = 0; i < verts.size() - 1; i += 11)
 			{
 				resultfile << verts[i] << " " << verts[i + 1] << " " << verts[i + 2] << " " << verts[i + 3] << " " << verts[i + 4] << " " << verts[i + 5] << " " << verts[i + 6] << " " << verts[i + 7] << " " << verts[i + 8] << " " << verts[i + 9] << " " << verts[i + 10] << endl;
+				if (i % 100 == 0) cout << "Writing verts: " << i << " of " << verts.size() << endl;
 			}
 
 			for (int i = 0; i < inds.size() - 1; i += 3)
 			{
 				resultfile << inds[i] << "->" << inds[i + 1] << "->" << inds[i + 2] << endl;
+				if (i % 100 == 0) cout << "Writing inds: " << i << " of " << inds.size() << endl;
 			}
 			resultfile.close();
 		}
