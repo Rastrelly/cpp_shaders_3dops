@@ -623,10 +623,17 @@ void coordsbyid(int w, int id, int size, int &x, int &y, bool hardway)
 
 float linterp(float x0, float x1, float y0, float y1, float x)
 {
+	float res = 0;
 	if ((x1 != x0) && (y1!=y0))
-		return y0 + (x - x0)*((y1 - y0) / (x1 - x0));
+		res = y0 + (x - x0)*((y1 - y0) / (x1 - x0));
 	else
-		return y0;
+		res = y0;
+	
+	if (y1 > y0) clampVal(res, y0, y1);
+	if (y1 < y0) clampVal(res, y1, y0);
+	if (y1 == y0) clampVal(res, y0, y0);
+
+	return res;
 }
 
 
@@ -635,6 +642,16 @@ void calcColour(float val, float min, float max, glm::vec3 &colour)
 	float prop = (val - min) / (max - min);
 
 	clampVal(prop,0.0f,1.0f);
+
+	if (prop == 0.0f)
+	{
+		colour = colourtable[0]; return;
+	}
+
+	if (prop == 1.0f)
+	{
+		colour = colourtable[colourtable.size()-1]; return;
+	}
 
 	float dc = 1/(float)colourtable.size();
 
@@ -660,9 +677,17 @@ void calcColour(float val, float min, float max, glm::vec3 &colour)
 	p1 = dc * cid;
 	p2 = dc * (cid + 1);
 	
-	colour.r = linterp(p1, p2, c1.r, c2.r, prop);
-	colour.g = linterp(p1, p2, c1.g, c2.g, prop);
-	colour.b = linterp(p1, p2, c1.b, c2.b, prop);
+	if ((prop != p1) && (prop != p2))
+	{
+		colour.r = linterp(p1, p2, c1.r, c2.r, prop);
+		colour.g = linterp(p1, p2, c1.g, c2.g, prop);
+		colour.b = linterp(p1, p2, c1.b, c2.b, prop);
+	}
+	else
+	{
+		if (prop == p1) colour = c1;
+		if (prop == p2) colour = c2;
+	}
 }
 
 
@@ -740,7 +765,7 @@ void drawSurface(Shader * shad, vector<glm::vec3> surf_points)
 			verts.push_back(surf_points[i].y);
 			verts.push_back(surf_points[i].z);
 
-			calcColour(surf_points[i].z, -10, 10, colour);
+			calcColour(surf_points[i].z, -20, 20, colour);
 
 			verts.push_back(colour.r);
 			verts.push_back(colour.g);
